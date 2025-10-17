@@ -206,6 +206,8 @@ class ActionExecutor:
         self._initialized = False
         self.downloaded_files: list[str] = []
         self.downloads_directory = '/workspace/.downloads'
+        # Create downloads directory if it doesn't exist
+        os.makedirs(self.downloads_directory, exist_ok=True)
 
         self.max_memory_gb: int | None = None
         if _override_max_memory_gb := os.environ.get('RUNTIME_MAX_MEMORY_GB', None):
@@ -606,6 +608,8 @@ class ActionExecutor:
         if not browser_observation.error:
             return browser_observation
         else:
+            # Ensure downloads directory exists before listing files
+            os.makedirs(self.downloads_directory, exist_ok=True)
             curr_files = os.listdir(self.downloads_directory)
             new_download = False
             for file in curr_files:

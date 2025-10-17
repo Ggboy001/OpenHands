@@ -38,9 +38,9 @@ EVAL_NOTE="$OPENHANDS_VERSION"
 COMMAND="poetry run python evaluation/benchmarks/webarena/run_infer.py \
   --agent-cls $AGENT \
   --llm-config $MODEL_CONFIG \
-  --max-iterations 15 \
-  --eval-num-workers $NUM_WORKERS \
-  --eval-note $EVAL_NOTE"
+  --max-iterations 15 "
+  # --eval-num-workers $NUM_WORKERS \
+  # --eval-note $EVAL_NOTE"
 
 if [ -n "$EVAL_LIMIT" ]; then
   echo "EVAL_LIMIT: $EVAL_LIMIT"

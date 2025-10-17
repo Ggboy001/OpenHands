@@ -50,7 +50,7 @@ def get_config(
     base_url = os.environ.get('WEBARENA_BASE_URL', None)
     openai_api_key = os.environ.get('OPENAI_API_KEY', None)
     assert base_url is not None, 'WEBARENA_BASE_URL must be set'
-    assert openai_api_key is not None, 'OPENAI_API_KEY must be set'
+    # assert openai_api_key is not None, 'OPENAI_API_KEY must be set'
 
     sandbox_config = get_default_sandbox_config_for_eval()
     sandbox_config.base_container_image = 'python:3.12-bookworm'
@@ -58,18 +58,28 @@ def get_config(
     sandbox_config.runtime_startup_env_vars = {
         'BASE_URL': base_url,
         'OPENAI_API_KEY': openai_api_key,
-        'SHOPPING': f'{base_url}:7770/',
-        'SHOPPING_ADMIN': f'{base_url}:7780/admin',
-        'REDDIT': f'{base_url}:9999',
-        'GITLAB': f'{base_url}:8023',
-        'WIKIPEDIA': f'{base_url}:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing',
-        'MAP': f'{base_url}:3000',
-        'HOMEPAGE': f'{base_url}:4399',
+        # Original WebArena environment variables
+        # 'SHOPPING': f'http://{base_url}:7770/',
+        # 'SHOPPING_ADMIN': f'http://{base_url}:7780/admin',
+        # 'REDDIT': f'http://{base_url}:9999',
+        # 'GITLAB': f'http://{base_url}:8023',
+        # 'WIKIPEDIA': f'http://{base_url}:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing',
+        # 'MAP': f'http://{base_url}:3000',
+        # 'HOMEPAGE': f'http://{base_url}:4399',
+        # BrowserGym WebArena environment variables (with WA_ prefix)
+        'WA_SHOPPING': f'http://{base_url}:7770/',
+        'WA_SHOPPING_ADMIN': f'http://{base_url}:7780/admin',
+        'WA_REDDIT': f'http://{base_url}:9999',
+        'WA_GITLAB': f'http://{base_url}:8023',
+        'WA_WIKIPEDIA': f'http://{base_url}:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing',
+        'WA_MAP': f'http://{base_url}:3000',
+        'WA_HOMEPAGE': f'http://{base_url}:4399',
     }
     config = get_openhands_config_for_eval(
         metadata=metadata,
-        runtime='docker',
+        runtime='local',
         sandbox_config=sandbox_config,
+        enable_browser=True,  # Required when browsergym_eval_env is set  
     )
     config.set_llm_config(metadata.llm_config)
     agent_config = config.get_agent_config(metadata.agent_class)
@@ -96,9 +106,9 @@ def initialize_runtime(
     action = BrowseInteractiveAction(browser_actions=BROWSER_EVAL_GET_GOAL_ACTION)
     logger.info(action, extra={'msg_type': 'ACTION'})
     obs = runtime.run_action(action)
+    
     logger.info(obs, extra={'msg_type': 'OBSERVATION'})
     goal = obs.content
-
     logger.info(f'{"-" * 50} END Runtime Initialization Fn {"-" * 50}')
     return goal
 
@@ -114,13 +124,13 @@ def complete_runtime(
     """
     logger.info(f'{"-" * 50} BEGIN Runtime Completion Fn {"-" * 50}')
     obs: CmdOutputObservation
-
     action = BrowseInteractiveAction(browser_actions=BROWSER_EVAL_GET_REWARDS_ACTION)
     logger.info(action, extra={'msg_type': 'ACTION'})
     obs = runtime.run_action(action)
     logger.info(obs, extra={'msg_type': 'OBSERVATION'})
-
+    logger.info(f'Rewards: {obs}')
     logger.info(f'{"-" * 50} END Runtime Completion Fn {"-" * 50}')
+
     return {
         'rewards': json.loads(obs.content),
     }
@@ -208,7 +218,7 @@ if __name__ == '__main__':
 
     llm_config = None
     if args.llm_config:
-        llm_config = get_llm_config_arg(args.llm_config)
+        llm_config = get_llm_config_arg(args.llm_config,'/root/OpenHands/config.toml')
         # modify_params must be False for evaluation purpose, for reproducibility and accuracy of results
         llm_config.modify_params = False
     if llm_config is None:
@@ -216,19 +226,19 @@ if __name__ == '__main__':
 
     metadata = make_metadata(
         llm_config,
-        args.dataset_name,
+        "webarena",
         args.agent_cls,
         args.max_iterations,
-        args.eval_note,
-        args.eval_output_dir,
+        "v0.56.0",
+        "webarena_qwen",
     )
     output_file = os.path.join(metadata.eval_output_dir, 'output.jsonl')
-    instances = prepare_dataset(dataset, output_file, args.eval_n_limit)
+    instances = prepare_dataset(dataset, output_file, 10)
 
     run_evaluation(
         instances,
         metadata,
         output_file,
-        args.eval_num_workers,
+        4,
         process_instance,
     )

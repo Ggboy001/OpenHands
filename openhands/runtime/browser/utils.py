@@ -12,7 +12,11 @@ from openhands.core.schema import ActionType
 from openhands.events.action import BrowseInteractiveAction, BrowseURLAction
 from openhands.events.observation import BrowserOutputObservation
 from openhands.runtime.browser.base64 import png_base64_url_to_image
-from openhands.runtime.browser.browser_env import BrowserEnv
+from openhands.runtime.browser.browser_env import (
+    BrowserEnv,
+    BROWSER_EVAL_GET_GOAL_ACTION,
+    BROWSER_EVAL_GET_REWARDS_ACTION,
+)
 from openhands.utils.async_utils import call_sync_from_async
 
 
@@ -189,7 +193,13 @@ async def browse(
         )
 
         # Process the content first using the axtree_object
-        observation.content = get_agent_obs_text(observation)
+        # For special evaluation actions, preserve the original text_content as JSON
+        if action_str in [BROWSER_EVAL_GET_GOAL_ACTION, BROWSER_EVAL_GET_REWARDS_ACTION]:
+            # Keep the original text_content from browser_env.py (should be JSON for rewards)
+            observation.content = obs.get('text_content', '')
+        else:
+            # For regular browser actions, generate agent observation text
+            observation.content = get_agent_obs_text(observation)
 
         # If return_axtree is False, remove the axtree_object to save space
         if not action.return_axtree:
@@ -215,7 +225,12 @@ async def browse(
 
         # Process the content using get_agent_obs_text regardless of return_axtree value
         try:
-            observation.content = get_agent_obs_text(observation)
+            # For special evaluation actions, preserve any existing content
+            if action_str in [BROWSER_EVAL_GET_GOAL_ACTION, BROWSER_EVAL_GET_REWARDS_ACTION]:
+                # Keep the existing content (usually error message in this case)
+                pass
+            else:
+                observation.content = get_agent_obs_text(observation)
         except Exception:
             # If get_agent_obs_text fails, keep the original error message
             pass
